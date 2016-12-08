@@ -1,0 +1,127 @@
+// IncuBeertor
+// Dependables
+//#include <Time.h> // time.h isn't available on circuit.io but this will go into the real thing
+#include <OneWire.h>
+#include <DallasTemperature.h> // http://arduino-info.wikispaces.com/Brick-Temperature-DS18B20 is a very useful reasorce
+#include <SoftwareSerial.h>
+
+// constants
+//const int nmos = 3; // should make all of these end in Pin for consistency
+const int peltierRelay1Pin = 8;
+const int peltierRelay2Pin = 10;
+const int fanRelayPin = 4;
+const int tempPin = A1;
+const int pumpPin = 2;
+const int ledPin = 13;
+const int btTxPin = A5; //transmit to the rx of bluetooth
+const int btRxPin = A3; //recieve from Tx of bluetooth
+
+DeviceAddress Probe1Addr = {0x28, 0x4D, 0x8D, 0x6E, 0x05, 0x00, 0x00, 0xB6};
+DeviceAddress Probe2Addr = {0x28, 0xBB, 0x29, 0x09, 0x06, 0x00, 0x00, 0xA8}; //This is the old probe used in the original temperatuer control/
+SoftwareSerial btSerial(btRxPin, btTxPin); //Rx, Tx
+
+OneWire oneWire(tempPin); // Setup a oneWire instance to communicate with any OneWire devices
+DallasTemperature sensors(&oneWire);// Pass our oneWire reference to Dallas Temperature. 
+
+// user adjustable variables
+//float targetTempArray[] = {25.0};
+//float targetTempTimeArray[] = {0};
+float tempDev = 1.0;
+
+// non pin constants
+//const int time0 = now(); // now() required time.h which will be present in real thing to control chaning target temps over time
+
+//global variables
+float temp1 = 0.0;
+float temp2 = 0.0;
+float tempAve = 0.0;
+String peltierState = "OFF";
+boolean toggle = 0;
+float targetTemp = 0.0;
+
+void setup() {
+  // initialize the digital pin as an output.
+//  pinMode(nmos, OUTPUT);
+  pinMode(peltierRelay1Pin, OUTPUT);
+  pinMode(peltierRelay2Pin, OUTPUT);
+  pinMode(fanRelayPin, OUTPUT);
+  pinMode(pumpPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  
+  
+  Serial.begin(9600); // will need to be 57600 when using bluetooth
+  btSerial.begin(57600);
+
+  sensors.setResolution(Probe1Addr, 12);
+  sensors.setResolution(Probe2Addr, 12);
+
+  hold();
+  digitalWrite(ledPin, LOW);
+}
+
+void heat() {
+//  Heats the side with writing which will be on the water side
+  digitalWrite(peltierRelay1Pin, HIGH);
+  digitalWrite(peltierRelay2Pin, HIGH);
+  digitalWrite(fanRelayPin, HIGH); // fan and pump on note that the fan is on when low. also need a resistor between pin and gnd to turn off when not in use
+  digitalWrite(pumpPin, LOW); // HIGH is off, LOW is on for the pump
+  peltierState = "HEAT";
+  digitalWrite(ledPin, HIGH);
+}
+
+void cool() {
+//  Cools the side with writing which will be on the water side
+  digitalWrite(peltierRelay1Pin, LOW);
+  digitalWrite(peltierRelay2Pin, LOW);
+  digitalWrite(fanRelayPin, HIGH); // fan on
+  digitalWrite(pumpPin, LOW); // HIGH is off, LOW is on for the pump
+  peltierState = "COOL";
+  digitalWrite(ledPin, LOW);
+}
+
+void hold() {
+//  Turns the Peltiers off
+  digitalWrite(peltierRelay1Pin, HIGH);
+  digitalWrite(peltierRelay2Pin, LOW);
+  digitalWrite(fanRelayPin, LOW);
+  digitalWrite(pumpPin, HIGH); // HIGH is off, LOW is on for the pump
+  peltierState = "OFF";
+  digitalWrite(ledPin, LOW);
+}
+
+void loop() {
+  sensors.requestTemperatures();
+  temp1 = sensors.getTempC(Probe1Addr); // -0.06 adjusted so that probes read the same at roome temperature (was 0.12 degrees different)
+  temp2 = sensors.getTempC(Probe2Addr); // +0.06 adjusted so that probes read the same at roome temperature (was 0.12 degrees different)
+  tempAve = (temp1+temp2) * 0.5;
+//  Serial.println("TempAve: "+ tempAve + " > " + targetTemp + " - " + tempDev );
+  
+  char input = 0;
+  if(tempAve > targetTemp+tempDev){
+    cool();
+  } else if(tempAve < targetTemp - tempDev){
+    heat();
+  } else {hold();}
+  
+  if(btSerial.available()){
+    String newTargetTemp;
+    delay(3); //allow buffer to fill
+    
+    //send old info
+    Serial.flush();
+    Serial.println(",tt" + String(targetTemp) + ";,t1" + String(temp1) + ";,t2" + String(temp2) + ";,st" + peltierState+";");
+    btSerial.flush();
+    btSerial.println(",tt" + String(targetTemp) + ";,t1" + String(temp1) + ";,t2" + String(temp2) + ";,st" + peltierState+";");
+    
+    if (btSerial.available() >0) {
+      newTargetTemp = btSerial.readString();
+      Serial.println(newTargetTemp);
+      
+      targetTemp = newTargetTemp.toFloat();
+    }
+    
+
+  }
+}
+
+

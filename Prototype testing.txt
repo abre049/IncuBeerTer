@@ -1,0 +1,36 @@
+Testing 0.1.0
+
+Peltiers = 2x 12706
+heat sink = cheap $2 heat sinks
+
+Temperature increase
+
+Plan --> get better heat sink
+
+Testing 0.2.1
+
+peltiers = 2x 12706
+heat sink = $30 heat sink
+brew-side heat transfer = large CPU water cooling thing
+
+result ==> temperature increase in bucket despite able to form ice crystals on cool side of peliter
+
+assessment ==> ?heat transfer between increasing ambient temp and fermentor greater than between heat exchange block and water
+
+plan ==> remove water block
+
+Testing 0.3.1
+run water through system
+
+at 20degrees water, 18 degrees ambient
+input temp = 20.0 degrees
+output temp = 19.7 degrees
+rate = 750 mL/Hr (note temp probes in tubes ==> slower rate)
+==> can raise temp of 20L brew by ~0.5-1 degree per hour
+
+Testing 0.3.2
+?how low can you go
+~300mL water, running through cooling system
+
+results: at ~20 degrees the i/o differential was 0.3
+at ~14 degrees i/o differential was ~0.2
