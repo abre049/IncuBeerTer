@@ -1,0 +1,254 @@
+// IncuBeertor
+// Dependables
+#include <Time.h>
+#include <avr/sleep.h>
+#include <OneWire.h>
+#include <DallasTemperature.h> // http://arduino-info.wikispaces.com/Brick-Temperature-DS18B20 is a very useful reasorce
+#include <SoftwareSerial.h>
+
+// constants
+//const int nmos = 3; 
+const int peltierRelay1Pin = 8;
+const int peltierRelay2Pin = 10;
+const int fanRelayPin = 4;
+const int tempPin = A1;
+const int pumpPin = 5;
+const int ledPin = 13;
+const int btTxPin = 12; //transmit to the rx of bluetooth
+const int btRxPin = 11; //recieve from Tx of bluetooth
+// porgressState constants
+const int AWAITING_TARGETS = 0;
+const int BREWING = 1;
+const int FINISHED = 2;
+//
+const int RESEND = 3;
+
+DeviceAddress Probe1Addr = {0x28, 0x4D, 0x8D, 0x6E, 0x05, 0x00, 0x00, 0xB6};
+DeviceAddress Probe2Addr = {0x28, 0xBB, 0x29, 0x09, 0x06, 0x00, 0x00, 0xA8}; //This is the old probe used in the original temperatuer control/
+SoftwareSerial btSerial(btRxPin, btTxPin); //Rx, Tx
+
+OneWire oneWire(tempPin); // Setup a oneWire instance to communicate with any OneWire devices
+DallasTemperature sensors(&oneWire);// Pass our oneWire reference to Dallas Temperature. 
+
+// user adjustable variables
+//float targetTempArray[] = {25.0};
+//float targetTempTimeArray[] = {0};
+float tempDev = 1.0;
+
+// non pin constants
+//const int time0 = now(); // now() required time.h which will be present in real thing to control chaning target temps over time
+
+//global variables
+float temp1 = 0.0;
+float temp2 = 0.0;
+float tempAve = 0.0;
+String peltierState = "OFF";
+boolean toggle = 0;
+float targetTemp;
+float targetTemps[100];
+float targetTimes[100];
+int numSteps = false;
+int progressState = AWAITING_TARGETS;
+time_t startTime;
+
+void heat() {
+//  Heats the side with writing which will be on the water side
+  digitalWrite(peltierRelay1Pin, LOW);
+  digitalWrite(peltierRelay2Pin, HIGH);
+  digitalWrite(fanRelayPin, HIGH); // fan and pump on note that the fan is on when low. also need a resistor between pin and gnd to turn off when not in use
+  digitalWrite(pumpPin, HIGH);
+  peltierState = "HEAT";
+  digitalWrite(ledPin, HIGH);
+}
+
+void cool() {
+//  Cools the side with writing which will be on the water side
+  digitalWrite(peltierRelay1Pin, HIGH);
+  digitalWrite(peltierRelay2Pin, LOW);
+  digitalWrite(fanRelayPin, HIGH); // fan on
+  digitalWrite(pumpPin, HIGH);
+  peltierState = "COOL";
+  digitalWrite(ledPin, LOW);
+}
+
+void hold() {
+//  Turns the Peltiers off
+  digitalWrite(peltierRelay1Pin, LOW);
+  digitalWrite(peltierRelay2Pin, LOW);
+  digitalWrite(fanRelayPin, LOW);
+  digitalWrite(pumpPin, LOW);
+  peltierState = "OFF";
+  digitalWrite(ledPin, LOW);
+}
+
+boolean isFloat(String proband){
+  boolean noLetters = true;
+  for (int idx; idx < proband.length(); idx++){
+    if (proband.charAt(idx)!= '.' || !isDigit(proband.charAt(idx))){
+      noLetters = false;     
+    }
+  }
+  return noLetters;
+}
+
+unsigned long time_tToS(time_t t){
+  unsigned long seconds = (year(t) * 12*
+                            + month(t) 
+                            + day(t) 
+                            + hour(t) 
+                            + minute(t) 
+                            + second(t));
+}
+
+
+void setup() {
+  // initialize the digital pin as an output.
+//  pinMode(nmos, OUTPUT);
+  pinMode(peltierRelay1Pin, OUTPUT);
+  pinMode(peltierRelay2Pin, OUTPUT);
+  pinMode(fanRelayPin, OUTPUT);
+  pinMode(pumpPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+
+  for (int i = 0; i < 100; i++){
+    targetTemps[i] = -1.0;
+    targetTimes[i] = -1.0;
+  }
+
+// ensure nothing is happening until we have target temp
+  hold();
+
+// set serial connections
+  Serial.begin(9600); // Only needed for debugging
+  btSerial.begin(57600); // bluetooth baud rate
+
+// set temp sensor resolution
+  sensors.setResolution(Probe1Addr, 12); //12 is the max resolution for my sensors
+  sensors.setResolution(Probe2Addr, 12);
+}
+
+void loop() {
+  while (progressState == AWAITING_TARGETS){
+    getTargets();
+  }
+  while (progressState == BREWING){
+    brewCycle();
+  }
+  if (progressState == FINISHED){
+    btSerial.print(progressState);
+    btSerial.flush();
+    cli();
+    sleep_enable();
+    sleep_cpu();
+  }
+}
+
+void getTargets(){
+  btSerial.print(progressState);
+  btSerial.flush();
+  delay (200); // wait for buffer to fill
+  
+  if (btSerial.available()){ // if there is a response from the android
+    // {ti1,ti2,...,te1;te2;...;} <<-- this is the form of the incomming message #--> number of steps, ',' --> time value, ';' --> temp value
+    //
+    String msgIn = btSerial.readString(); // read the incoming message
+    Serial.print("msgIn");
+    Serial.println(msgIn);
+    String firstHalf = msgIn.substring(0,(msgIn.length()/2)); // split it in two
+    String secondHalf = msgIn.substring(msgIn.length()/2);
+    while (firstHalf != secondHalf){ // are the two halves the same? keep asking to resend until they are. this test is to increase stability of the transfered message,
+      btSerial.print(String(RESEND));
+      btSerial.flush();
+      delay(200);
+      msgIn = btSerial.readString();
+      firstHalf = msgIn.substring(0,(msgIn.length()/2)); // split it in two
+      secondHalf = msgIn.substring(msgIn.length()/2);
+    }
+  
+    String valBuf = "";
+    int timeIdx = 0;
+    int tempIdx = 0;
+    for (int i = 0; i < firstHalf.length(); i++){
+  //    serial.println(msgIn[i]);
+      if (msgIn[i] == ','){
+        targetTimes[timeIdx] = valBuf.toFloat();
+        timeIdx++;
+        valBuf = "";
+      } else if (msgIn[i] == ';'){
+        targetTemps[tempIdx] = valBuf.toFloat();
+        tempIdx++;
+        valBuf = "";
+      } else {
+        valBuf = valBuf + msgIn[i];
+        Serial.println(valBuf);
+      }
+    }
+    progressState = BREWING;
+    startTime = now();
+  }
+}
+
+void brewCycle(){
+  sensors.requestTemperatures();
+  temp1 = sensors.getTempC(Probe1Addr); // -0.06 adjusted so that probes read the same at roome temperature (was 0.12 degrees different)
+  temp2 = sensors.getTempC(Probe2Addr); // +0.06 adjusted so that probes read the same at roome temperature (was 0.12 degrees different)
+  tempAve = (temp1+temp2) * 0.5;
+
+  time_t currentTime = now();
+  int runTime = currentTime - startTime;
+  Serial.print("start time: ");
+  Serial.print((unsigned long) startTime);
+  Serial.print("current time: ");
+  Serial.print((unsigned long) currentTime);
+  Serial.print(", now: ");
+  Serial.println((unsigned long) now());
+  
+  for (int i = 0; i < sizeof(targetTimes); i++ ){
+    Serial.print("current time(s): ");
+    Serial.print((unsigned long)currentTime);
+    Serial.print(", targetTime(s): ");
+    Serial.print(targetTimes[i]*60*60*24);
+    Serial.print(", targetTemp: ");
+    Serial.println(targetTemp);
+    if (targetTimes[i] == -1.0){
+      progressState = FINISHED;
+      hold();
+    } else if (currentTime >= targetTimes[i]*60*60*24){ //convert targetTime from days to seconds
+      targetTemp = targetTemps[i];
+      Serial.print(", targetTemp: ");
+      Serial.println(targetTemp);
+      break;
+    }
+  }
+
+  if(tempAve > (targetTemp+tempDev)){
+    cool();
+  } else if(tempAve < (targetTemp - tempDev)){
+    heat();
+  } else {hold();}
+
+  String msgOut = String(progressState) + ",tt" + String(targetTemp) + ";,t1" + String(temp1) + ";,t2" + String(temp2) + ";,st" + peltierState+";";
+  msgOut = msgOut+msgOut;
+  Serial.println(msgOut);
+  
+  btSerial.println(msgOut);
+  btSerial.flush();
+
+  delay(1000);
+  Serial.print("T1: ");
+  Serial.print(temp1);
+  Serial.print(", T2: ");
+  Serial.print(temp2);
+  Serial.print(", Ta: ");
+  Serial.print(tempAve);
+  Serial.print(", Ti: ");
+  Serial.print(runTime);
+  Serial.print(", TT: ");
+  Serial.print(targetTemp);
+  Serial.print(", state: ");
+  Serial.print(peltierState);
+  Serial.print(", PS: ");
+  Serial.println(progressState);
+}
+
+

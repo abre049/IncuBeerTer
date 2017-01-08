@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="000fb86b-e2fe-4f74-adb3-e56e124523b7" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/GUI.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/to_android.py" />
-      <change type="DELETED" beforePath="C:\Users\Alex\Google Drive\Play\Projects\IncuBeerTor\README.md" afterPath="" />
-    </list>
+    <list default="true" id="000fb86b-e2fe-4f74-adb3-e56e124523b7" name="Default" comment="" />
     <ignored path="IncuBeerTor.iws" />
     <ignored path=".idea/workspace.xml" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -138,6 +134,8 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="Scope" />
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -172,8 +170,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scope" />
-      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -498,6 +494,51 @@
     <entry file="file://$PROJECT_DIR$/GUI.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
+          <caret line="26" column="54" selection-start-line="26" selection-start-column="54" selection-end-line="26" selection-end-column="54" />
+          <folding>
+            <element signature="e#3753#4081#0" expanded="false" />
+            <element signature="e#4745#5424#0" expanded="false" />
+            <element signature="e#5479#6077#0" expanded="false" />
+            <element signature="e#6126#6695#0" expanded="false" />
+            <element signature="e#6736#7005#0" expanded="false" />
+            <element signature="e#7049#7249#0" expanded="false" />
+            <element signature="e#7293#7430#0" expanded="false" />
+            <element signature="e#7474#7618#0" expanded="false" />
+            <element signature="e#7668#8347#0" expanded="false" />
+            <element signature="e#8794#8881#0" expanded="false" />
+            <element signature="e#8947#11570#0" expanded="false" />
+            <element signature="e#16179#16266#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../../Work/Medicine/TI/Obs and Gynae/Obs and Gyn Audit 2015 gestation diabetes/Audit Processing 0.2.0.ipynb">
+      <provider selected="true" editor-type-id="ipnb-editor">
+        <state>
+          <selected id="-1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../../Work/Medicine/TI/Obs and Gynae/Obs and Gyn Audit 2015 gestation diabetes/Gestational diabetes audit.ipynb">
+      <provider selected="true" editor-type-id="ipnb-editor">
+        <state>
+          <selected id="-1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/to_android.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="23" column="4" selection-start-line="23" selection-start-column="4" selection-end-line="23" selection-end-column="4" />
+          <folding>
+            <element signature="e#0#24#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/GUI.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#3753#4081#0" expanded="false" />
@@ -787,7 +828,7 @@
     <entry file="file://$PROJECT_DIR$/../../../Work/Medicine/TI/Obs and Gynae/Obs and Gyn Audit 2015 gestation diabetes/Audit Processing 0.2.0.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
-          <selected id="-1" />
+          <selected id="1" />
         </state>
       </provider>
     </entry>
@@ -815,7 +856,7 @@
     <entry file="file://$PROJECT_DIR$/../../../Work/Medicine/TI/Obs and Gynae/Obs and Gyn Audit 2015 gestation diabetes/Gestational diabetes audit.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
-          <selected id="-1" />
+          <selected id="2" />
         </state>
       </provider>
     </entry>
